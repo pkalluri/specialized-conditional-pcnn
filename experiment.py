@@ -11,14 +11,15 @@ import data
 import model
 import train
 from vis import generate_between_classes
+import datetime
 
 def run(dataset='mnist', n_samples=50000, batch_size=64, n_features=200, n_layers=6, n_bins=4,
-        optimizer='adam', learnrate=1e-4, dropout=0.9, exp_name='',
+        optimizer='adam', learnrate=1e-4, dropout=0.9, note='',
         exp_dir='~/experiments/conditional-pixelcnn/', cuda=True,
         resume=False):
 
-    exp_name += '%s_%ifeat_%ilayers_%ibins'%(
-        dataset, n_features, n_layers, n_bins)
+    exp_name = datetime.datetime.now().strftime("%m_%d_%y-%H_%M_%S")
+    exp_name += '_{}_{}samples_{}'.format(dataset, n_samples, note)
     exp_dir = os.path.join(os.path.expanduser(exp_dir), exp_name)
     if not os.path.isdir(exp_dir):
         os.makedirs(exp_dir)
