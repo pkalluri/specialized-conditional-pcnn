@@ -71,11 +71,11 @@ debug = False
 
 if debug:
     run(dataset='mnist', n_samples = 10, batch_size=64, n_features=200, n_layers=6, n_bins=4,
-        optimizer='adam', learnrate=1e-4, dropout=0.9, exp_name='',
+        optimizer='adam', learnrate=1e-4, dropout=0.9, note='',
         exp_dir='out', cuda=True,
         resume=False)
 else:
     run(dataset='mnist', n_samples = 50000, batch_size=64, n_features=200, n_layers=6, n_bins=4,
-        optimizer='adam', learnrate=1e-4, dropout=0.9, exp_name='',
+        optimizer='adam', learnrate=1e-4, dropout=0.9, note='',
         exp_dir='out', cuda=True,
         resume=False)
