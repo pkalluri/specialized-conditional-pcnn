@@ -12,12 +12,12 @@ import model
 import train
 from vis import generate_between_classes
 
-def run(dataset='mnist', batch_size=64, n_features=200, n_layers=6, n_bins=4,
-        optimizer='adam', learnrate=1e-4, dropout=0.9, exp_name='pixelCNN',
+def run(dataset='mnist', n_samples=50000, batch_size=64, n_features=200, n_layers=6, n_bins=4,
+        optimizer='adam', learnrate=1e-4, dropout=0.9, exp_name='',
         exp_dir='~/experiments/conditional-pixelcnn/', cuda=True,
         resume=False):
 
-    exp_name += '_%s_%ifeat_%ilayers_%ibins'%(
+    exp_name += '%s_%ifeat_%ilayers_%ibins'%(
         dataset, n_features, n_layers, n_bins)
     exp_dir = os.path.join(os.path.expanduser(exp_dir), exp_name)
     if not os.path.isdir(exp_dir):
@@ -52,19 +52,29 @@ def run(dataset='mnist', batch_size=64, n_features=200, n_layers=6, n_bins=4,
     loss_fcn = torch.nn.NLLLoss2d()
 
     # Train
-    train.fit(train_loader, val_loader, net, exp_dir, input2label, loss_fcn,
+    train.fit(train_loader, val_loader, n_samples, net, exp_dir, input2label, loss_fcn,
               onehot_fcn, n_classes, optimizer, learnrate=learnrate, cuda=cuda,
               resume=resume)
 
-    # Generate some between-class examples
-    generate_between_classes(net, [28, 28], [1, 7],
-                             os.path.join(exp_dir,'1-7.jpeg'), n_classes, cuda)
-    generate_between_classes(net, [28, 28], [3, 8],
-                             os.path.join(exp_dir,'3-8.jpeg'), n_classes, cuda)
-    generate_between_classes(net, [28, 28], [4, 9],
-                             os.path.join(exp_dir,'4-9.jpeg'), n_classes, cuda)
-    generate_between_classes(net, [28, 28], [5, 6],
-                             os.path.join(exp_dir,'5-6.jpeg'), n_classes, cuda)
+    # # Generate some between-class examples
+    # generate_between_classes(net, [28, 28], [1, 7],
+    #                          os.path.join(exp_dir,'1-7.jpeg'), n_classes, cuda)
+    # generate_between_classes(net, [28, 28], [3, 8],
+    #                          os.path.join(exp_dir,'3-8.jpeg'), n_classes, cuda)
+    # generate_between_classes(net, [28, 28], [4, 9],
+    #                          os.path.join(exp_dir,'4-9.jpeg'), n_classes, cuda)
+    # generate_between_classes(net, [28, 28], [5, 6],
+    #                          os.path.join(exp_dir,'5-6.jpeg'), n_classes, cuda)
 
+debug = False
 
-
+if debug:
+    run(dataset='mnist', n_samples = 10, batch_size=64, n_features=200, n_layers=6, n_bins=4,
+        optimizer='adam', learnrate=1e-4, dropout=0.9, exp_name='',
+        exp_dir='out', cuda=True,
+        resume=False)
+else:
+    run(dataset='mnist', n_samples = 50000, batch_size=64, n_features=200, n_layers=6, n_bins=4,
+        optimizer='adam', learnrate=1e-4, dropout=0.9, exp_name='',
+        exp_dir='out', cuda=True,
+        resume=False)

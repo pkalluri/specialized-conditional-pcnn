@@ -44,7 +44,7 @@ def plot_loss(train_loss, val_loss):
     return plot
 
 
-def fit(train_loader, val_loader, model, exp_path, label_preprocess, loss_fcn,
+def fit(train_loader, val_loader, n_samples, model, exp_path, label_preprocess, loss_fcn,
         onehot_fcn, n_classes=10, optimizer='adam', learnrate=1e-4, cuda=True,
         patience=10, max_epochs=200, resume=False):
 
@@ -90,6 +90,7 @@ def fit(train_loader, val_loader, model, exp_path, label_preprocess, loss_fcn,
         bar = ProgressBar()
         losses = []
         mean_outs = []
+        sample_idx = 0
         for x,y in bar(dataloader):
             label = label_preprocess(x)
             if cuda:
@@ -111,6 +112,9 @@ def fit(train_loader, val_loader, model, exp_path, label_preprocess, loss_fcn,
                 loss.backward()
                 optimizer.step()
             losses.append(loss.data.cpu().numpy())
+            sample_idx += 1
+            if sample_idx == n_samples:
+                break
         clearline()
         return float(np.mean(losses)), np.mean(mean_outs)
 
