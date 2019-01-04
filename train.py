@@ -16,8 +16,8 @@ from skimage.transform import resize
 import torch
 from torch.autograd import Variable
 
+import losses
 from vis import plot_stats, clearline, generate, tile_images
-
 
 def generate_images(model,img_size,n_classes,onehot_fcn,cuda=True):
     y = np.array(list(range(min(n_classes,10)))*5)  # gpu mem limit
@@ -50,6 +50,7 @@ def fit(train_loader, val_loader, n_samples, model, exp_path, label_preprocess, 
 
     if cuda:
         model = model.cuda()
+        loss_fcn = loss_fcn.cuda()
 
     if not os.path.isdir(exp_path):
         os.makedirs(exp_path)
@@ -88,7 +89,7 @@ def fit(train_loader, val_loader, n_samples, model, exp_path, label_preprocess, 
 
     def epoch(dataloader,training):
         bar = ProgressBar()
-        losses = []
+        epoch_losses = []
         mean_outs = []
         sample_idx = 0
         for x,y in bar(dataloader):
@@ -111,12 +112,12 @@ def fit(train_loader, val_loader, n_samples, model, exp_path, label_preprocess, 
             if training:
                 loss.backward()
                 optimizer.step()
-            losses.append(loss.data.cpu().numpy())
-            sample_idx += 1
-            if sample_idx == n_samples:
+            epoch_losses.append(loss.data.cpu().numpy())
+            sample_idx += x.shape[0]
+            if sample_idx >= n_samples:
                 break
         clearline()
-        return float(np.mean(losses)), np.mean(mean_outs)
+        return float(np.mean(epoch_losses)), np.mean(mean_outs)
 
     for e in range(start_epoch,max_epochs):
         # Training

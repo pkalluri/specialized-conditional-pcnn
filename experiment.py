@@ -8,6 +8,7 @@ import os
 import torch
 
 import data
+import losses
 import model
 import train
 from vis import generate_between_classes
@@ -50,7 +51,8 @@ def run(dataset='mnist', n_samples=50000, n_bins=4,
     # Define loss fcn, incl. label formatting from input
     def input2label(x):
         return torch.squeeze(torch.round((n_bins-1)*x).type(torch.LongTensor),1)
-    loss_fcn = torch.nn.NLLLoss()
+    loss_fcns = {'standard': losses.standard_loss_function}
+    loss_fcn = loss_fcns[loss]
 
     # Train
     train.fit(train_loader, val_loader, n_samples, net, exp_dir, input2label, loss_fcn,
@@ -72,10 +74,10 @@ debug = False
 if debug:
     run(dataset='mnist', n_samples=10, n_bins=4,
         n_features=200, batch_size=64, n_layers=6,
-        loss='standard', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=35, cuda=True, resume=False,
+        loss='standard', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=100, cuda=True, resume=False,
         exp_dir='out', note='')
 else:
     run(dataset='mnist', n_samples=50000, n_bins=4,
         n_features=200, batch_size=64, n_layers=6,
-        loss='standard', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=35, cuda=True, resume=False,
+        loss='standard', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=100, cuda=True, resume=False,
         exp_dir='out', note='')

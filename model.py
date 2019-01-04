@@ -95,7 +95,7 @@ class PixelCNN(nn.Module):
         # Last layer: project to n_bins (output is [-1, n_bins, h, w])
         self.dropout = nn.Dropout2d(dropout)
         self.layers.append(GatedRes(n_features,n_bins,n_classes))
-        self.layers.append(nn.LogSoftmax(dim=1))
+        # self.layers.append(nn.LogSoftmax(dim=1)) # moved out of model
 
     def forward(self,x,y):
         # Add channel of ones so network can tell where padding is
@@ -121,8 +121,8 @@ class PixelCNN(nn.Module):
         x = self.dropout(x)
         i += 1
         x = self.layers[i](x,y)
-        i += 1
-        x = self.layers[i](x)
+        # i += 1 # moved out of model
+        # x = self.layers[i](x) # moved out of model
         assert i==len(self.layers)-1
         assert len(features)==0
         return x

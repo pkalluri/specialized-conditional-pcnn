@@ -14,6 +14,7 @@ import numpy as np
 from progressbar import ProgressBar
 import torch
 from torch.autograd import Variable
+import torch.nn.functional as F
 
 
 def plot_stats(stats,savepath):
@@ -69,7 +70,7 @@ def generate(model, img_size, y, temp=0.8, cuda=True):
     for r in bar(range(img_size[0])):
         for c in range(img_size[1]):
             out = model(gen, y)
-            p = torch.exp(out)[:, :, r, c]
+            p = F.softmax(out[:,:,r,c], dim=1)
             p = torch.pow(p, 1/temp)
             p = p/torch.sum(p, -1, keepdim=True)
             sample = p.multinomial(1)
