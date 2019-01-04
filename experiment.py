@@ -13,10 +13,10 @@ import train
 from vis import generate_between_classes
 import datetime
 
-def run(dataset='mnist', n_samples=50000, batch_size=64, n_features=200, n_layers=6, n_bins=4,
-        optimizer='adam', learnrate=1e-4, dropout=0.9, note='',
-        exp_dir='~/experiments/conditional-pixelcnn/', cuda=True,
-        resume=False):
+def run(dataset='mnist', n_samples=50000, n_bins=4,
+        n_features=200, batch_size=64, n_layers=6,
+        loss='standard', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=35, cuda=True, resume=False,
+        exp_dir='.', note=''):
 
     exp_name = datetime.datetime.now().strftime("%m_%d_%y-%H_%M_%S")
     exp_name += '_{}_{}samples_{}'.format(dataset, n_samples, note)
@@ -50,12 +50,12 @@ def run(dataset='mnist', n_samples=50000, batch_size=64, n_features=200, n_layer
     # Define loss fcn, incl. label formatting from input
     def input2label(x):
         return torch.squeeze(torch.round((n_bins-1)*x).type(torch.LongTensor),1)
-    loss_fcn = torch.nn.NLLLoss2d()
+    loss_fcn = torch.nn.NLLLoss()
 
     # Train
     train.fit(train_loader, val_loader, n_samples, net, exp_dir, input2label, loss_fcn,
               onehot_fcn, n_classes, optimizer, learnrate=learnrate, cuda=cuda,
-              resume=resume)
+              max_epochs=max_epochs, resume=resume)
 
     # # Generate some between-class examples
     # generate_between_classes(net, [28, 28], [1, 7],
@@ -70,12 +70,12 @@ def run(dataset='mnist', n_samples=50000, batch_size=64, n_features=200, n_layer
 debug = False
 
 if debug:
-    run(dataset='mnist', n_samples = 10, batch_size=64, n_features=200, n_layers=6, n_bins=4,
-        optimizer='adam', learnrate=1e-4, dropout=0.9, note='',
-        exp_dir='out', cuda=True,
-        resume=False)
+    run(dataset='mnist', n_samples=10, n_bins=4,
+        n_features=200, batch_size=64, n_layers=6,
+        loss='standard', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=35, cuda=True, resume=False,
+        exp_dir='out', note='')
 else:
-    run(dataset='mnist', n_samples = 50000, batch_size=64, n_features=200, n_layers=6, n_bins=4,
-        optimizer='adam', learnrate=1e-4, dropout=0.9, note='',
-        exp_dir='out', cuda=True,
-        resume=False)
+    run(dataset='mnist', n_samples=50000, n_bins=4,
+        n_features=200, batch_size=64, n_layers=6,
+        loss='standard', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=35, cuda=True, resume=False,
+        exp_dir='out', note='')
