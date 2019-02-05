@@ -14,6 +14,7 @@ import numpy as np
 from progressbar import ProgressBar
 from skimage.transform import resize
 import torch
+from torchvision import utils
 from torch.autograd import Variable
 
 import losses
@@ -44,7 +45,7 @@ def plot_loss(train_loss, val_loss):
     return plot
 
 
-def fit(train_loader, val_loader, n_samples, model, exp_path, label_preprocess, loss_fcn,
+def fit(train_data, val_data, n_samples, model, exp_path, label_preprocess, loss_fcn,
         onehot_fcn, n_classes=10, optimizer='adam', learnrate=1e-4, cuda=True,
         patience=10, max_epochs=200, resume=False):
 
@@ -57,14 +58,16 @@ def fit(train_loader, val_loader, n_samples, model, exp_path, label_preprocess, 
     statsfile = os.path.join(exp_path,'stats.json')
 
     optimizer = {'adam':torch.optim.Adam(model.parameters(),lr=learnrate),
-                 'sgd':torch.optim.SGD(
-                     model.parameters(),lr=learnrate,momentum=0.9),
+                 'sgd':torch.optim.SGD(model.parameters(),lr=learnrate,momentum=0.9),
                  'adamax':torch.optim.Adamax(model.parameters(),lr=learnrate)
                  }[optimizer.lower()]
 
     # load a single example from the iterator to get the image size
-    x = train_loader.sampler.data_source.__getitem__(0)[0]
-    img_size = list(x.numpy().shape[1:])
+    x,y = next(iter(train_data))
+    # utils.save_image(x,
+    #                  os.path.join(os.getcwd(), 'sample.png'),
+    #                  nrow=1, padding=2)
+    img_size = list(x.numpy().shape[-2:])
 
     if not resume:
         stats = {'loss':{'train':[],'val':[]},
@@ -116,14 +119,14 @@ def fit(train_loader, val_loader, n_samples, model, exp_path, label_preprocess, 
             sample_idx += x.shape[0]
             if sample_idx >= n_samples:
                 break
-        clearline()
+        # clearline()
         return float(np.mean(epoch_losses)), np.mean(mean_outs)
 
     for e in range(start_epoch,max_epochs):
         # Training
         t0 = time.time()
-        loss,mean_out = epoch(train_loader,training=True)
-        time_per_example = (time.time()-t0)/len(train_loader.dataset)
+        loss,mean_out = epoch(train_data, training=True)
+        time_per_example = (time.time()-t0)/len(train_data)
         stats['loss']['train'].append(loss)
         stats['mean_output']['train'].append(mean_out)
         print(('Epoch %3i:    Training loss = %6.4f    mean output = %1.2f    '
@@ -131,8 +134,8 @@ def fit(train_loader, val_loader, n_samples, model, exp_path, label_preprocess, 
 
         # Validation
         t0 = time.time()
-        loss,mean_out = epoch(val_loader,training=False)
-        time_per_example = (time.time()-t0)/len(val_loader.dataset)
+        loss,mean_out = epoch(val_data, training=False)
+        time_per_example = (time.time()-t0)/len(val_data)
         stats['loss']['val'].append(loss)
         stats['mean_output']['val'].append(mean_out)
         print(('            Validation loss = %6.4f    mean output = %1.2f    '
@@ -148,8 +151,7 @@ def fit(train_loader, val_loader, n_samples, model, exp_path, label_preprocess, 
         if new_frame.ndim==2:
             new_frame = np.repeat(new_frame[:,:,np.newaxis],3,axis=2)
         nw = int(new_frame.shape[1]*plot_frame.shape[0]/new_frame.shape[0])
-        new_frame = resize(new_frame,[plot_frame.shape[0],nw],
-                           order=0, preserve_range=True, mode='constant')
+        new_frame = resize(new_frame,[plot_frame.shape[0],nw], anti_aliasing=True, order=0, preserve_range=True, mode='constant')
         plots.append(np.concatenate((plot_frame.astype('uint8'),
                                      new_frame.astype('uint8')),
                                     axis=1))

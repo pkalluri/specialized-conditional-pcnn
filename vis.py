@@ -66,17 +66,17 @@ def generate(model, img_size, y, temp=0.8, cuda=True):
         y, gen = y.cuda(), gen.cuda()
     y, gen = Variable(y), Variable(gen)
     bar = ProgressBar()
-    print('Generating images...')
     for r in bar(range(img_size[0])):
         for c in range(img_size[1]):
             out = model(gen, y)
-            p = F.softmax(out[:,:,r,c], dim=1)
+            p = torch.nn.LogSoftmax(dim=1)(out)
+            p = torch.exp(out)[:,:,r,c]
             p = torch.pow(p, 1/temp)
             p = p/torch.sum(p, -1, keepdim=True)
             sample = p.multinomial(1)
             gen[:, :, r, c] = sample.float()/(out.shape[1]-1)
-    clearline()
-    clearline()
+    # clearline()
+    # clearline()
     return (255*gen.data.cpu().numpy()).astype('uint8')
 
 

@@ -1,1 +1,7 @@
 out/*
+dbg-477696.out
+dbg-477697.out
+sbatch.sh
+__pycache__/*
+.idea/*
+data/*
