@@ -8,7 +8,11 @@ import os
 from PIL import Image
 import time
 
-import matplotlib; matplotlib.use('Agg')
+import matplotlib;
+
+from data import get_onehot_fcn
+
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from progressbar import ProgressBar
@@ -23,7 +27,7 @@ from vis import plot_stats, clearline, generate, tile_images
 def generate_images(model,img_size,n_classes,onehot_fcn,cuda=True):
     y = np.array(list(range(min(n_classes,10)))*5)  # gpu mem limit
     y = np.concatenate([onehot_fcn(x)[np.newaxis,:] for x in y])
-    return generate(model, img_size, y, cuda)
+    return generate(model, img_size, y, cuda=cuda)
 
 
 def plot_loss(train_loss, val_loss):
@@ -47,7 +51,7 @@ def plot_loss(train_loss, val_loss):
 
 def fit(train_data, val_data, n_samples, model, exp_path, label_preprocess, loss_fcn,
         onehot_fcn, n_classes=10, optimizer='adam', learnrate=1e-4, cuda=True,
-        patience=10, max_epochs=200, resume=False):
+        patience=10, max_epochs=200, resume=False, bgd=False):
 
     if cuda:
         model = model.cuda()
@@ -90,11 +94,12 @@ def fit(train_data, val_data, n_samples, model, exp_path, label_preprocess, loss
     def save_img(x,filename):
         Image.fromarray((255*x).astype('uint8')).save(filename)
 
-    def epoch(dataloader,training):
+    def epoch(dataloader,training,bgd):
         bar = ProgressBar()
         epoch_losses = []
         mean_outs = []
         sample_idx = 0
+        accumulated_loss_dict = {}
         for x,y in bar(dataloader):
             label = label_preprocess(x)
             if cuda:
@@ -108,24 +113,74 @@ def fit(train_data, val_data, n_samples, model, exp_path, label_preprocess, loss
             else:
                 model.eval()
             output = model(x,y)
-            loss = loss_fcn(output,label)
-            # track mean output
-            output = output.data.cpu().numpy()
-            mean_outs.append(np.mean(np.argmax(output,axis=1))/output.shape[1])
-            if training:
-                loss.backward()
-                optimizer.step()
-            epoch_losses.append(loss.data.cpu().numpy())
+
+            one_hot_digits = [np.argmax(one_hot).item() for one_hot in y]
+            n_classes = y.shape[1]
+            for i in range(n_classes):
+                selector = torch.LongTensor([j for j in range(len(one_hot_digits)) if one_hot_digits[j] == i])
+                # print(i, selector.nelement())
+                if selector.nelement() == 0:
+                    continue
+
+                class_labels = torch.index_select(label, 0, selector)
+                class_outputs = torch.index_select(output, 0, selector)
+                class_batch_loss = loss_fcn(class_outputs, class_labels)
+                # print(i, class_labels.shape, class_outputs.shape, class_batch_loss.shape)
+
+                if bgd:
+                    class_batch_loss = class_batch_loss.unsqueeze(0)
+                    if i not in accumulated_loss_dict:
+                        accumulated_loss_dict[i] = class_batch_loss
+                    else:
+                        accumulated_loss_dict[i] = torch.cat([accumulated_loss_dict[i], class_batch_loss])
+
+                if training and not bgd:
+                    class_batch_loss.backward()
+                    optimizer.step()
+
+                # track mean output
+                class_outputs = class_outputs.data.cpu().numpy()
+                mean_outs.append(np.mean(np.argmax(class_outputs,axis=1))/class_outputs.shape[1])
+                epoch_losses.append(class_batch_loss.data.cpu().numpy())
+
             sample_idx += x.shape[0]
             if sample_idx >= n_samples:
                 break
-        # clearline()
-        return float(np.mean(epoch_losses)), np.mean(mean_outs)
+
+        if bgd:
+            epoch_losses = None
+            for k,v in accumulated_loss_dict.items():
+                if isinstance(loss_fcn, losses.OfficialLossModule) or isinstance(loss_fcn, losses.StandardLossModule):
+                    class_epoch_loss = torch.sum(v)
+                elif isinstance(loss_fcn, losses.SumLossModule):
+                    class_epoch_loss = torch.logsumexp(v)
+                elif isinstance(loss_fcn, losses.MinLossModule):
+                    class_epoch_loss = torch.min(v)
+                else:
+                    print("Unknown loss function [{}] for batch gradient descent, exiting.".format(type(loss_fcn)))
+                    exit()
+
+                print("Epoch class [{}] loss: {}".format(k, class_epoch_loss.item()))
+                class_epoch_loss = class_epoch_loss.unsqueeze(0)
+                if epoch_losses is None:
+                    epoch_losses = class_epoch_loss
+                else:
+                    epoch_losses = torch.cat([epoch_losses, class_epoch_loss])
+
+            epoch_loss = torch.sum(epoch_losses)
+            if training:
+                epoch_loss.backward()
+                optimizer.step()
+
+            return epoch_loss.item(), np.mean(mean_outs)
+        else:
+            # clearline()
+            return float(np.mean(epoch_losses)), np.mean(mean_outs)
 
     for e in range(start_epoch,max_epochs):
         # Training
         t0 = time.time()
-        loss,mean_out = epoch(train_data, training=True)
+        loss,mean_out = epoch(train_data, training=True, bgd=bgd)
         time_per_example = (time.time()-t0)/len(train_data)
         stats['loss']['train'].append(loss)
         stats['mean_output']['train'].append(mean_out)
@@ -134,7 +189,7 @@ def fit(train_data, val_data, n_samples, model, exp_path, label_preprocess, loss
 
         # Validation
         t0 = time.time()
-        loss,mean_out = epoch(val_data, training=False)
+        loss,mean_out = epoch(val_data, training=False, bgd=bgd)
         time_per_example = (time.time()-t0)/len(val_data)
         stats['loss']['val'].append(loss)
         stats['mean_output']['val'].append(mean_out)
@@ -143,7 +198,7 @@ def fit(train_data, val_data, n_samples, model, exp_path, label_preprocess, loss
 
         # Generate images and update gif
         new_frame = tile_images(generate_images(model, img_size, n_classes,
-                                                onehot_fcn, cuda))
+                                                onehot_fcn, cuda=cuda))
         generated.append(new_frame)
 
         # Update gif with loss plot

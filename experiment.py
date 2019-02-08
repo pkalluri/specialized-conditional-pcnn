@@ -15,7 +15,7 @@ from vis import generate_between_classes
 import datetime
 
 def run(dataset='mnist', n_samples=50000, n_bins=4,
-        n_features=200, batch_size=64, n_layers=6,
+        n_features=200, batch_size=64, n_layers=6, bgd=False,
         loss='standard', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=35, cuda=True, resume=False,
         exp_dir='out', note=''):
 
@@ -60,7 +60,7 @@ def run(dataset='mnist', n_samples=50000, n_bins=4,
     # Train
     train.fit(train_data, val_data, n_samples, net, exp_dir, input2label, loss_fcn,
               onehot_fcn, n_classes, optimizer, learnrate=learnrate, cuda=cuda,
-              max_epochs=max_epochs, resume=resume)
+              max_epochs=max_epochs, resume=resume, bgd=bgd)
 
     # # Generate some between-class examples
     # generate_between_classes(net, [28, 28], [1, 7],
@@ -75,10 +75,10 @@ def run(dataset='mnist', n_samples=50000, n_bins=4,
 debug = True
 
 if debug:
-    run(dataset='mnistog', n_samples=64, n_bins=4, n_features=200, batch_size=64,
-        n_layers=6, loss='official', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=3, cuda=True, resume=False,
-        exp_dir='out', note='debug')
+    run(dataset='mnistog', n_samples=10, n_bins=4, n_features=200, batch_size=64,
+        n_layers=6,  bgd=True, loss='min', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=3, cuda=False,
+        resume=False, exp_dir='out', note='debug')
 else:
     run(dataset='mnist', n_samples=50000, n_bins=4, n_features=200, batch_size=64,
-        n_layers=6, loss='standard', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=1000000, cuda=True, resume=False,
-        exp_dir='out', note='less_data_to_completion')
+        n_layers=6, bgd=True, loss='standard', optimizer='adam', learnrate=1e-4, dropout=0.9, max_epochs=1000000, cuda=True,
+        resume=False, exp_dir='out', note='less_data_to_completion')

@@ -5,3 +5,4 @@ sbatch.sh
 __pycache__/*
 .idea/*
 data/*
+test.py
